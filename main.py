@@ -1,10 +1,6 @@
 from kivy.app import App
 from kivy.lang import Builder
 import requests
-import speech_recognition as sr
-import pyttsx3
-import datetime
-import threading
 
 KV = '''
 FloatLayout:
@@ -22,79 +18,46 @@ FloatLayout:
         pos_hint: {"center_x":0.5, "top":0.95}
         color: 0,1,1,1
 
+    TextInput:
+        id: entrada
+        hint_text: "Digite seu comando..."
+        size_hint: 0.8, 0.1
+        pos_hint: {"center_x":0.5, "center_y":0.5}
+
     Label:
-        id: status
-        text: "Aguardando comando..."
-        pos_hint: {"center_x":0.5, "top":0.85}
+        id: resposta
+        text: "Sistema pronto"
+        pos_hint: {"center_x":0.5, "center_y":0.35}
         color: 0,1,0,1
 
     Button:
-        text: "ATIVAR"
-        font_size: 22
-        size_hint: 0.4,0.2
-        pos_hint: {"center_x":0.5, "center_y":0.3}
-        on_press: app.ouvir_comando()
+        text: "ENVIAR"
+        size_hint: 0.4, 0.1
+        pos_hint: {"center_x":0.5, "center_y":0.2}
+        on_press: app.perguntar()
 '''
 
 class JarvisApp(App):
 
     def build(self):
-        self.engine = pyttsx3.init()
-        threading.Thread(target=self.escuta_continua, daemon=True).start()
         return Builder.load_string(KV)
 
-    def falar(self, texto):
-        self.root.ids.status.text = texto
-        self.engine.say(texto)
-        self.engine.runAndWait()
+    def perguntar(self):
+        comando = self.root.ids.entrada.text
 
-    def escuta_continua(self):
-        r = sr.Recognizer()
-        while True:
-            with sr.Microphone() as source:
-                audio = r.listen(source)
-            try:
-                texto = r.recognize_google(audio, language="pt-BR").lower()
-                if "jarvis" in texto:
-                    self.falar("Sim?")
-                    self.ouvir_comando()
-            except:
-                pass
-
-    def ouvir_comando(self):
-        r = sr.Recognizer()
-        with sr.Microphone() as source:
-            self.root.ids.status.text = "Ouvindo..."
-            audio = r.listen(source)
-
-        try:
-            comando = r.recognize_google(audio, language="pt-BR")
-            self.processar(comando)
-        except:
-            self.falar("Não entendi")
-
-    def processar(self, comando):
-
-        # OFFLINE
-        if "hora" in comando:
-            agora = datetime.datetime.now().strftime("%H:%M")
-            self.falar(f"Agora são {agora}")
+        if not comando:
+            self.root.ids.resposta.text = "Digite algo"
             return
 
-        if "quem é você" in comando:
-            self.falar("Eu sou Jarvis, sua inteligência artificial pessoal")
-            return
-
-        # ONLINE
         try:
-            resposta = requests.get(
+            r = requests.get(
                 "https://api.affiliateplus.xyz/api/chatbot",
                 params={"message": comando, "botname": "Jarvis"}
             ).json()
 
-            self.falar(resposta["message"])
+            self.root.ids.resposta.text = r["message"]
 
         except:
-            self.falar("Sem internet")
+            self.root.ids.resposta.text = "Erro de conexão"
 
 JarvisApp().run()
