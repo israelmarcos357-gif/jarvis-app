@@ -1,27 +1,63 @@
-name: Build APK
+from kivy.app import App
+from kivy.lang import Builder
+import requests
 
-on: [push]
+KV = '''
+FloatLayout:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    canvas.before:
+        Color:
+            rgb: 0, 0, 0
+        Rectangle:
+            size: self.size
+            pos: self.pos
 
-    steps:
-      - uses: actions/checkout@v3
+    Label:
+        text: "J.A.R.V.I.S"
+        font_size: 48
+        pos_hint: {"center_x":0.5, "top":0.95}
+        color: 0,1,1,1
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip git
-          pip install buildozer
+    TextInput:
+        id: entrada
+        hint_text: "Digite seu comando..."
+        size_hint: 0.8, 0.1
+        pos_hint: {"center_x":0.5, "center_y":0.5}
 
-      - name: Build APK
-        run: |
-          buildozer init || true
-          buildozer -v android debug
+    Label:
+        id: resposta
+        text: "Sistema pronto"
+        pos_hint: {"center_x":0.5, "center_y":0.35}
+        color: 0,1,0,1
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: jarvis-apk
-          path: bin/*.apk
+    Button:
+        text: "ENVIAR"
+        size_hint: 0.4, 0.1
+        pos_hint: {"center_x":0.5, "center_y":0.2}
+        on_press: app.perguntar()
+'''
+
+class JarvisApp(App):
+
+    def build(self):
+        return Builder.load_string(KV)
+
+    def perguntar(self):
+        comando = self.root.ids.entrada.text
+
+        if not comando:
+            self.root.ids.resposta.text = "Digite algo"
+            return
+
+        try:
+            r = requests.get(
+                "https://api.affiliateplus.xyz/api/chatbot",
+                params={"message": comando, "botname": "Jarvis"}
+            ).json()
+
+            self.root.ids.resposta.text = r["message"]
+
+        except:
+            self.root.ids.resposta.text = "Erro de conexão"
+
+JarvisApp().run()
